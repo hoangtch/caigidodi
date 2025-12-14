@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTCUSDT Technical Indicator Dashboard</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #131722;
+            color: #d1d4dc;
+        }
+
+        .container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 12px;
+            background: #1e222d;
+            border-bottom: 1px solid #2a2e39;
+            height: 40px;
+            flex-shrink: 0;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-icon {
+            width: 24px;
+            height: 24px;
+            background: #2962ff;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+            color: white;
+        }
+
+        h1 {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        select {
+            background: #2a2e39;
+            border: 1px solid #363a45;
+            border-radius: 4px;
+            padding: 5px 10px;
+            color: #d1d4dc;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .mode-selector {
+            display: flex;
+            background: #2a2e39;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid #363a45;
+        }
+
+        .mode-btn {
+            background: transparent;
+            border: none;
+            color: #787b86;
+            padding: 5px 10px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .mode-btn:hover {
+            color: #d1d4dc;
+        }
+
+        .mode-btn.active {
+            background: #2962ff;
+            color: white;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 180px;
+            background: #1e222d;
+            border-right: 1px solid #2a2e39;
+            overflow-y: auto;
+            flex-shrink: 0;
+            font-size: 11px;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #363a45;
+            border-radius: 2px;
+        }
+
+        .sidebar-section {
+            padding: 8px;
+            border-bottom: 1px solid #2a2e39;
+        }
+
+        .sidebar h3 {
+            font-size: 9px;
+            text-transform: uppercase;
+            color: #787b86;
+            margin-bottom: 6px;
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 6px;
+            cursor: pointer;
+            color: #d1d4dc;
+            border-radius: 3px;
+        }
+
+        .category-header:hover {
+            background: #2a2e39;
+        }
+
+        .category-items {
+            display: none;
+            flex-direction: column;
+            padding-left: 8px;
+        }
+
+        .category-items.expanded {
+            display: flex;
+        }
+
+        .indicator-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+            color: #787b86;
+        }
+
+        .indicator-item:hover {
+            background: #2a2e39;
+            color: #d1d4dc;
+        }
+
+        .indicator-item.active {
+            background: rgba(41, 98, 255, 0.15);
+            color: #2962ff;
+        }
+
+        .indicator-checkbox {
+            width: 10px;
+            height: 10px;
+            border: 1px solid #363a45;
+            border-radius: 2px;
+        }
+
+        .indicator-item.active .indicator-checkbox {
+            background: #2962ff;
+            border-color: #2962ff;
+        }
+
+        /* Chart panels container - flexbox for responsive sizing */
+        .charts-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chart-panel {
+            position: relative;
+            border-bottom: 1px solid #2a2e39;
+            min-height: 60px;
+        }
+
+        /* Main chart gets flex:3 (3x the size of indicators) */
+        .chart-panel.main {
+            flex: 3;
+        }
+
+        /* Each indicator panel gets flex:1 (shares remaining space) */
+        .chart-panel.indicator {
+            flex: 1;
+        }
+
+        .panel-label {
+            position: absolute;
+            top: 4px;
+            left: 8px;
+            z-index: 10;
+            font-size: 10px;
+            color: #787b86;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .panel-label .name {
+            color: #d1d4dc;
+            font-weight: 500;
+        }
+
+        .panel-label .remove {
+            cursor: pointer;
+            opacity: 0.6;
+            font-size: 12px;
+        }
+
+        .panel-label .remove:hover {
+            opacity: 1;
+            color: #ef5350;
+        }
+
+        .chart-info {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            z-index: 10;
+            font-size: 11px;
+        }
+
+        .chart-info .symbol {
+            color: #d1d4dc;
+            font-weight: 500;
+        }
+
+        .chart-info .badge {
+            background: rgba(41, 98, 255, 0.2);
+            color: #2962ff;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 9px;
+            margin-left: 5px;
+        }
+
+        .badge.expanding {
+            background: rgba(0, 188, 212, 0.2);
+            color: #00bcd4;
+        }
+
+        .badge.rolling {
+            background: rgba(156, 39, 176, 0.2);
+            color: #9c27b0;
+        }
+
+        .price-info {
+            margin-top: 4px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .price-up {
+            color: #26a69a;
+        }
+
+        .price-down {
+            color: #ef5350;
+        }
+
+        .active-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+        }
+
+        .overlay-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            background: #2a2e39;
+            padding: 2px 5px;
+            border-radius: 2px;
+            font-size: 9px;
+        }
+
+        .overlay-tag .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .overlay-tag .remove {
+            cursor: pointer;
+            opacity: 0.6;
+            font-size: 10px;
+        }
+
+        .overlay-tag .remove:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">₿</div>
+                <h1 id="chart-title">BTCUSDT · 1D</h1>
+            </div>
+            <div class="controls">
+                <div class="mode-selector">
+                    <button class="mode-btn active" data-mode="normal" onclick="setMode('normal')">Normal</button>
+                    <button class="mode-btn" data-mode="expanding" onclick="setMode('expanding')">Expanding</button>
+                    <button class="mode-btn" data-mode="rolling" onclick="setMode('rolling')">Rolling</button>
+                </div>
+                <select id="dataset-select"></select>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <h3>Overlays (On Chart)</h3>
+                    <div id="active-overlays" class="active-tags"><span style="color:#787b86">None</span></div>
+                </div>
+                <div class="sidebar-section">
+                    <h3>Indicator Panels</h3>
+                    <div id="active-panes" class="active-tags"><span style="color:#787b86">None</span></div>
+                </div>
+                <div class="sidebar-section">
+                    <h3>Indicators</h3>
+                    <div id="indicator-list"></div>
+                </div>
+            </aside>
+
+            <div class="charts-container" id="charts-container">
+                <!-- Main chart panel -->
+                <div class="chart-panel main" id="main-chart-panel">
+                    <div class="chart-info">
+                        <span class="symbol" id="symbol-label">BTCUSDT</span>
+                        <span class="badge" id="mode-badge" style="display:none;"></span>
+                        <div class="price-info" id="price-info"></div>
+                    </div>
+                    <div id="main-chart" style="width:100%;height:100%;"></div>
+                </div>
+                <!-- Indicator panels will be added here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let mainChart = null;
+        let candleSeries = null;
+        let volumeSeries = null;
+        let currentDataset = 'BTCUSDT_1d';
+        let currentMode = 'normal';
+
+        let overlayIndicators = {};  // On main chart
+        let indicatorPanels = {};    // Separate panels below
+
+        const colors = ['#2962ff', '#ff6d00', '#00bcd4', '#e91e63', '#4caf50', '#9c27b0', '#ffeb3b', '#ff5722'];
+        let colorIdx = 0;
+        const getColor = () => colors[colorIdx++ % colors.length];
+
+        const overlayTypes = ['SMA_', 'EMA_', 'WMA_', 'DEMA_', 'TEMA_', 'HMA_', 'WSMA_', 'BB_', 'KC_', 'DC_', 'ICHIMOKU_', 'LINREG_'];
+        const panelTypes = ['LINREG_SLOPE', 'LINREG_ANGLE', 'LINREG_INTERCEPT'];  // These go in panels, not overlays
+        const isOverlay = (name) => overlayTypes.some(t => name.startsWith(t)) && !panelTypes.some(t => name.startsWith(t));
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            const badge = document.getElementById('mode-badge');
+            if (mode === 'normal') {
+                badge.style.display = 'none';
+            } else {
+                badge.style.display = 'inline';
+                badge.textContent = mode === 'expanding' ? 'EXPANDING Z-SCORE' : 'ROLLING Z-SCORE';
+                badge.className = 'badge ' + mode;
+            }
+            rebuildAll();
+        }
+
+        async function loadDatasets() {
+            const res = await fetch('/api/datasets');
+            const datasets = await res.json();
+            const select = document.getElementById('dataset-select');
+            select.innerHTML = datasets.map(d => `<option value="${d}" ${d === currentDataset ? 'selected' : ''}>${d}</option>`).join('');
+            select.onchange = (e) => { currentDataset = e.target.value; rebuildAll(); };
+        }
+
+        async function loadIndicators() {
+            const res = await fetch(`/api/indicators/${currentDataset}?mode=${currentMode}`);
+            const categories = await res.json();
+            let html = '';
+            for (const [cat, inds] of Object.entries(categories)) {
+                if (!inds.length) continue;
+                const isOv = cat === 'Moving Averages' || cat === 'Volatility';
+                html += `
+                    <div class="indicator-category">
+                        <div class="category-header" onclick="this.nextElementSibling.classList.toggle('expanded')">
+                            <span>${isOv ? '📈' : '📊'} ${cat}</span>
+                            <span style="color:#787b86">${inds.length}</span>
+                        </div>
+                        <div class="category-items">
+                            ${inds.map(i => `
+                                <div class="indicator-item" data-ind="${i}" onclick="toggleIndicator('${i}', this)">
+                                    <div class="indicator-checkbox"></div>
+                                    <span>${i}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            document.getElementById('indicator-list').innerHTML = html;
+        }
+
+        function createChartOptions(container, showTimeAxis = false) {
+            return {
+                width: container.clientWidth,
+                height: container.clientHeight,
+                layout: {
+                    background: { type: 'solid', color: '#131722' },
+                    textColor: '#787b86'
+                },
+                grid: { vertLines: { color: '#1e222d' }, horzLines: { color: '#1e222d' } },
+                rightPriceScale: { borderColor: '#2a2e39' },
+                timeScale: {
+                    borderColor: '#2a2e39',
+                    timeVisible: showTimeAxis,
+                    visible: true
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                    vertLine: { color: '#758696', width: 1, style: 3, labelBackgroundColor: '#2a2e39' },
+                    horzLine: { color: '#758696', width: 1, style: 3, labelBackgroundColor: '#2a2e39' }
+                }
+            };
+        }
+
+        // Show time axis only on the last panel (bottom-most chart)
+        function updateTimeAxisVisibility() {
+            const panelNames = Object.keys(indicatorPanels);
+
+            // If no indicator panels, show time axis on main chart
+            if (panelNames.length === 0) {
+                if (mainChart) {
+                    mainChart.timeScale().applyOptions({ timeVisible: true });
+                }
+                return;
+            }
+
+            // Hide time axis on main chart
+            if (mainChart) {
+                mainChart.timeScale().applyOptions({ timeVisible: false });
+            }
+
+            // Hide time axis on all indicator panels except the last one
+            panelNames.forEach((name, index) => {
+                const isLast = index === panelNames.length - 1;
+                indicatorPanels[name].chart.timeScale().applyOptions({ timeVisible: isLast });
+            });
+        }
+
+        async function createMainChart() {
+            const container = document.getElementById('main-chart');
+            const res = await fetch(`/api/data/${currentDataset}?mode=${currentMode}`);
+            const data = await res.json();
+
+            const parts = currentDataset.split('_');
+            const modeLabel = currentMode === 'normal' ? '' : ` (${currentMode === 'expanding' ? 'Exp' : 'Roll'} Z)`;
+            document.getElementById('chart-title').textContent = `${parts[0]} · ${parts[1]?.toUpperCase()}${modeLabel}`;
+            document.getElementById('symbol-label').textContent = parts[0];
+
+            const candleData = data.map(d => ({
+                time: new Date(d.time).getTime() / 1000,
+                open: d.open, high: d.high, low: d.low, close: d.close
+            }));
+            const volumeData = data.map(d => ({
+                time: new Date(d.time).getTime() / 1000,
+                value: d.volume,
+                color: d.close >= d.open ? 'rgba(38, 166, 154, 0.4)' : 'rgba(239, 83, 80, 0.4)'
+            }));
+
+            mainChart = LightweightCharts.createChart(container, createChartOptions(container));
+
+            candleSeries = mainChart.addCandlestickSeries({
+                upColor: '#26a69a', downColor: '#ef5350',
+                borderUpColor: '#26a69a', borderDownColor: '#ef5350',
+                wickUpColor: '#26a69a', wickDownColor: '#ef5350'
+            });
+            candleSeries.setData(candleData);
+
+            volumeSeries = mainChart.addHistogramSeries({
+                priceFormat: { type: 'volume' },
+                priceScaleId: '',
+                scaleMargins: { top: 0.85, bottom: 0 }
+            });
+            volumeSeries.setData(volumeData);
+
+            mainChart.timeScale().fitContent();
+
+            // Sync crosshair
+            mainChart.subscribeCrosshairMove((param) => {
+                if (param.time && param.seriesData) {
+                    const c = param.seriesData.get(candleSeries);
+                    if (c) updatePriceInfo(c);
+                }
+                // Sync other charts
+                syncCrosshair(param);
+            });
+
+            if (candleData.length) updatePriceInfo(candleData[candleData.length - 1]);
+        }
+
+        function updatePriceInfo(c) {
+            const dec = currentMode === 'normal' ? 2 : 4;
+            const up = c.close >= c.open;
+            const cls = up ? 'price-up' : 'price-down';
+            document.getElementById('price-info').innerHTML = `
+                <span>O <span class="${cls}">${c.open.toFixed(dec)}</span></span>
+                <span>H <span class="${cls}">${c.high.toFixed(dec)}</span></span>
+                <span>L <span class="${cls}">${c.low.toFixed(dec)}</span></span>
+                <span>C <span class="${cls}">${c.close.toFixed(dec)}</span></span>
+            `;
+        }
+
+        function syncCrosshair(param) {
+            for (const name in indicatorPanels) {
+                const panel = indicatorPanels[name];
+                if (param.time) {
+                    panel.chart.setCrosshairPosition(0, param.time, panel.series);
+                } else {
+                    panel.chart.clearCrosshairPosition();
+                }
+            }
+        }
+
+        async function toggleIndicator(name, el) {
+            const isActive = overlayIndicators[name] || indicatorPanels[name];
+            if (isActive) {
+                removeIndicator(name);
+                el.classList.remove('active');
+            } else {
+                el.classList.add('active');
+                await addIndicator(name);
+            }
+        }
+
+        async function addIndicator(name) {
+            const res = await fetch(`/api/indicator/${currentDataset}/${name}?mode=${currentMode}`);
+            const data = await res.json();
+            const lineData = data.map(d => ({ time: new Date(d.time).getTime() / 1000, value: d.value }));
+            const color = getColor();
+
+            if (isOverlay(name)) {
+                // Add to main chart as overlay
+                const lineSeries = mainChart.addLineSeries({
+                    color, lineWidth: 1, priceLineVisible: false, lastValueVisible: false
+                });
+                lineSeries.setData(lineData);
+                overlayIndicators[name] = { series: lineSeries, color };
+                updateOverlayTags();
+            } else {
+                // Create a NEW separate panel below main chart
+                createIndicatorPanel(name, lineData, color);
+                // Update time axis and resize after adding panel
+                resizeAllCharts();
+                updateTimeAxisVisibility();
+            }
+        }
+
+        function createIndicatorPanel(name, lineData, color) {
+            const container = document.getElementById('charts-container');
+
+            // Create panel div
+            const panel = document.createElement('div');
+            panel.className = 'chart-panel indicator';
+            panel.id = `panel-${name}`;
+            panel.innerHTML = `
+                <div class="panel-label">
+                    <span class="name" style="color:${color}">${name}</span>
+                    <span class="remove" onclick="removeIndicator('${name}')">✕</span>
+                </div>
+                <div class="indicator-chart" style="width:100%;height:100%;"></div>
+            `;
+            container.appendChild(panel);
+
+            // Create chart immediately (synchronous)
+            const chartContainer = panel.querySelector('.indicator-chart');
+            const chart = LightweightCharts.createChart(chartContainer, {
+                ...createChartOptions(chartContainer, false),  // Always start with hidden time axis
+                timeScale: { borderColor: '#2a2e39', timeVisible: false, visible: true }
+            });
+
+            const series = chart.addLineSeries({
+                color, lineWidth: 2, priceLineVisible: true, lastValueVisible: true
+            });
+            series.setData(lineData);
+
+            // Sync time scale with main chart
+            chart.timeScale().applyOptions({
+                rightOffset: mainChart.timeScale().options().rightOffset
+            });
+            const range = mainChart.timeScale().getVisibleLogicalRange();
+            if (range) chart.timeScale().setVisibleLogicalRange(range);
+
+            // Subscribe to time scale changes
+            mainChart.timeScale().subscribeVisibleLogicalRangeChange((r) => {
+                if (r) chart.timeScale().setVisibleLogicalRange(r);
+            });
+
+            indicatorPanels[name] = { panel, chart, series, color };
+            updatePaneTags();
+
+            // Resize this chart to fit its container
+            chart.applyOptions({ width: chartContainer.clientWidth, height: chartContainer.clientHeight });
+        }
+
+        function removeIndicator(name) {
+            if (overlayIndicators[name]) {
+                mainChart.removeSeries(overlayIndicators[name].series);
+                delete overlayIndicators[name];
+                updateOverlayTags();
+            }
+
+            if (indicatorPanels[name]) {
+                indicatorPanels[name].chart.remove();
+                indicatorPanels[name].panel.remove();
+                delete indicatorPanels[name];
+                updatePaneTags();
+                // Resize remaining charts and update time axis visibility
+                setTimeout(() => {
+                    resizeAllCharts();
+                    updateTimeAxisVisibility();
+                }, 50);
+            }
+
+            const el = document.querySelector(`[data-ind="${name}"]`);
+            if (el) el.classList.remove('active');
+        }
+
+        function updateOverlayTags() {
+            const container = document.getElementById('active-overlays');
+            const names = Object.keys(overlayIndicators);
+            container.innerHTML = names.length ? names.map(n => `
+                <span class="overlay-tag">
+                    <span class="dot" style="background:${overlayIndicators[n].color}"></span>
+                    ${n}
+                    <span class="remove" onclick="removeIndicator('${n}')">✕</span>
+                </span>
+            `).join('') : '<span style="color:#787b86">None</span>';
+        }
+
+        function updatePaneTags() {
+            const container = document.getElementById('active-panes');
+            const names = Object.keys(indicatorPanels);
+            container.innerHTML = names.length ? names.map(n => `
+                <span class="overlay-tag">
+                    <span class="dot" style="background:${indicatorPanels[n].color}"></span>
+                    ${n}
+                    <span class="remove" onclick="removeIndicator('${n}')">✕</span>
+                </span>
+            `).join('') : '<span style="color:#787b86">None</span>';
+        }
+
+        async function rebuildAll() {
+            const savedOverlays = { ...overlayIndicators };
+            const savedPanes = { ...indicatorPanels };
+
+            // Clear everything
+            if (mainChart) mainChart.remove();
+            for (const name in indicatorPanels) {
+                indicatorPanels[name].chart.remove();
+                indicatorPanels[name].panel.remove();
+            }
+            overlayIndicators = {};
+            indicatorPanels = {};
+            colorIdx = 0;
+
+            await createMainChart();
+            await loadIndicators();
+
+            // Restore overlays
+            for (const name of Object.keys(savedOverlays)) {
+                const el = document.querySelector(`[data-ind="${name}"]`);
+                if (el) { el.classList.add('active'); await addIndicator(name); }
+            }
+            // Restore panes
+            for (const name of Object.keys(savedPanes)) {
+                const el = document.querySelector(`[data-ind="${name}"]`);
+                if (el) { el.classList.add('active'); await addIndicator(name); }
+            }
+
+            // After all panels are restored, update time axis visibility and resize
+            resizeAllCharts();
+            updateTimeAxisVisibility();
+        }
+
+        // Resize all charts to fit current layout
+        function resizeAllCharts() {
+            const mainContainer = document.getElementById('main-chart');
+            if (mainChart) {
+                mainChart.applyOptions({
+                    width: mainContainer.clientWidth,
+                    height: mainContainer.clientHeight
+                });
+            }
+
+            for (const name in indicatorPanels) {
+                const chartContainer = indicatorPanels[name].panel.querySelector('.indicator-chart');
+                indicatorPanels[name].chart.applyOptions({
+                    width: chartContainer.clientWidth,
+                    height: chartContainer.clientHeight
+                });
+            }
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', resizeAllCharts);
+
+        async function init() {
+            await loadDatasets();
+            await createMainChart();
+            await loadIndicators();
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
